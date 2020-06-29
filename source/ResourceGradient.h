@@ -65,12 +65,26 @@ class ResourceGradient {
         next_grid[z][y][x] = val;
     }
 
+    void IncVal(size_t x, size_t y, size_t z, double val) {
+        curr_grid[z][y][x] += val;
+    }
+
+    void IncNextVal(size_t x, size_t y, size_t z, double val) {
+        next_grid[z][y][x] += val;
+    }
+
     void DecVal(size_t x, size_t y, size_t z, double val) {
         curr_grid[z][y][x] -= val;
+        if (curr_grid[z][y][x] < 0) {
+            curr_grid[z][y][x] = 0;
+        }
     }
 
     void DecNextVal(size_t x, size_t y, size_t z, double val) {
         next_grid[z][y][x] -= val;
+        if (next_grid[z][y][x] < 0) {
+            next_grid[z][y][x] = 0;
+        }
     }
 
     double GetVal(size_t x, size_t y, size_t z=0) const {

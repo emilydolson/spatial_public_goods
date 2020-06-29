@@ -31,16 +31,18 @@ class HCAWebInterface : public UI::Animate, public HCAWorld{
   UI::Canvas public_good_vertical_display;
   UI::Canvas cell_display;
   // UI::Canvas clade_display;
-  const double display_cell_size = 10;
+  const double display_cell_size = 7;
 
   UI::Button toggle;
   UI::Style button_style;
   bool draw_cells = true;
+  int draw_layer = 0;
 
 
   color_fun_t cell_color_fun;
   UI::Selector cell_color_control;
-                                     
+  UI::Selector cell_layer_control;
+
   color_fun_t age_color_fun = [this](int cell_id) {
                                         double hue = (pop[cell_id]->age/AGE_LIMIT) * 280.0;
                                         return emp::ColorHSL(hue,50,50);
@@ -51,6 +53,10 @@ class HCAWebInterface : public UI::Animate, public HCAWorld{
                                         return emp::ColorHSL(hue,50,50);
                                      };
 
+  color_fun_t resistance_color_fun = [this](int cell_id) {
+                                        double hue = 100 + pop[cell_id]->resistance * 100;
+                                        return emp::ColorHSL(hue,50,50);
+                                     };
 
   should_draw_fun_t should_draw_cell_fun;
   should_draw_fun_t draw_if_occupied = [this](int cell_id){return IsOccupied(cell_id);};
@@ -59,7 +65,7 @@ class HCAWebInterface : public UI::Animate, public HCAWorld{
   public:
   HCAWebInterface() : config_ui(config), public_good_area("public_good_area"), cell_area("cell_area"), controls("control_area"), stats_area("stats_area"),
     public_good_display(100, 100, "public_good_display"), public_good_vertical_display(100, 100, "public_good_vertical_display"), cell_display(100, 100, "cell_display"),
-    cell_color_control("cell_color_control")
+    cell_color_control("cell_color_control"), cell_layer_control("cell_layer_control")
     // : anim([this](){DoFrame();}, public_good_display, cell_display) 
   {
     SetupInterface();   
@@ -80,7 +86,7 @@ class HCAWebInterface : public UI::Animate, public HCAWorld{
     cell_display.SetSize(WORLD_X * display_cell_size, WORLD_Y * display_cell_size);
     cell_display.Clear("black");
 
-    public_good_area << "<h1 class='text-center'>PublicGood</h1>" << public_good_vertical_display << " " << public_good_display ;
+    public_good_area << "<h1 class='text-center'>Public Good</h1>" << public_good_vertical_display << " " << public_good_display ;
     cell_area << "<h1 class='text-center'>Cells</h1>" << cell_display;
     controls << "<h1 class='text-center'>Controls</h1>";
     stats_area << "<h1 class='text-center'>Statistics</h1>";
@@ -102,6 +108,20 @@ class HCAWebInterface : public UI::Animate, public HCAWorld{
                                      RedrawCells();
                                  }, 0);
 
+    cell_color_control.SetOption("Resistance", 
+                                 [this](){
+                                     cell_color_fun = resistance_color_fun;
+                                     should_draw_cell_fun = draw_if_occupied;
+                                     RedrawCells();
+                                 }, 2);
+
+    for (int i = 0; i < WORLD_Z; i++) {
+      cell_layer_control.SetOption(emp::to_string(i),
+                                  [this, i]() {
+                                    draw_layer = i;
+                                    RedrawCells();
+                                  }, i);
+    }
 
     toggle = GetToggleButton("but_toggle");
     button_style.AddClass("btn");
@@ -112,7 +132,7 @@ class HCAWebInterface : public UI::Animate, public HCAWorld{
     reset_button.SetCSS(button_style);
     
     controls << toggle;
-    controls << " " << reset_button << " " << cell_color_control  << "<br>";
+    controls << " " << reset_button << " " << cell_color_control << " " << cell_layer_control << "<br>";
 
     public_good_display.On("click", [this](int x, int y){PublicGoodClick(x, y);});;
     RedrawPublicGood();
@@ -207,7 +227,7 @@ class HCAWebInterface : public UI::Animate, public HCAWorld{
 
     for (size_t x = 0; x < WORLD_X; x++) {
       for (size_t y = 0; y < WORLD_Y; y++) {
-        size_t cell_id = x + y * WORLD_X;
+        size_t cell_id = x + y * WORLD_X + draw_layer*WORLD_X*WORLD_Y;
         if (should_draw_cell_fun(cell_id)) {
           std::string color = cell_color_fun(cell_id);
 
